@@ -104,7 +104,7 @@ def maximize_alpha(alpha, gamma_pk):
     from numpy.linalg import norm
     from scipy.special import digamma, polygamma
     trigamma = lambda x: polygamma(1, x)
-    new_alpha = alpha
+    new_alpha = np.log(alpha)
     n = num_people
     # Second part of gradient, keep this out of alpha_step() because
     # it does not change
@@ -133,7 +133,7 @@ def maximize_alpha(alpha, gamma_pk):
         (new_alpha, step_size) = alpha_step(new_alpha)
         num_iter += 1
         print num_iter
-    return new_alpha
+    return np.exp(new_alpha)
 
 
 r1 = np.zeros([num_people, num_people])
