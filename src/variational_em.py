@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 ################################################################
 ##
 ## VARIATIONAL EM (VEM) FOR PARAMETER ESTIMATION OF MMSBMs
@@ -30,19 +32,26 @@ class VariationalEM:
         self.b = np.ones([num_groups, num_groups])
 
     def estimate(self, y):
+        """Parameter estimation method; y is the n x n evidence matrix."""
         for _ in range(self.num_iterations):
             self.e_step(data)
             self.m_step(data)
 
     def e_step(self, y):
+        """Expectation step of EM algorithm."""
         # Coordinate ascent to solve for phi_to, phi_from & gamma
         for _ in range(10):
             self.vi_phi_to(y)
             self.vi_phi_from(y)
             self.vi_gamma(y)
 
-    def vi_phi_to(self, y, e_term):
-        # Maximize phi_to
+    def m_step(self, y):
+        """Maximization step of EM algorithm."""
+        self.max_alpha(y)
+        self.max_b(y)
+
+    def vi_phi_to(self, y):
+        """Variational inference for phi_to term."""
         for p in range(self.num_people):
             t1 = digamma(self.gamma[p, :]) - digamma(sum(self.gamma[p, :]))
             for q in range(self.num_people):
@@ -56,6 +65,7 @@ class VariationalEM:
                 self.phi_to[p, q, :] = np.exp(t - logsumexp(t))
 
     def vi_phi_from(self, y):
+        """Variational inference for phi_from term."""
         for q in range(self.num_people):
             t1 = digamma(self.gamma[q, :]) - digamma(sum(self.gamma[q, :]))
             for p in range(self.num_people):
@@ -68,14 +78,11 @@ class VariationalEM:
                 self.phi_from[p, q, :] = np.exp(t - logsumexp(t))
 
     def vi_gamma(self, y):
+        """Variational inference for gamma term."""
         for p in range(self.num_people):
             self.gamma[p, :] = self.alpha \
                 + sum(self.phi_to[p, q, :] for q in range(self.num_people)) \
-                + sum(self.phi_from(p, q) for q in range(self.num_people))
-
-    def m_step(self, y):
-        self.max_alpha(y)
-        self.max_b(y)
+                + sum(self.phi_from[p, q, :] for q in range(self.num_people))
 
     def max_alpha(self, y):
         from numpy.linalg import norm
