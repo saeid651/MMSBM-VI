@@ -9,6 +9,7 @@
 ################################################################
 
 import numpy as np
+import itertools
 from scipy.misc import logsumexp
 from scipy.special import digamma, polygamma
 
@@ -28,19 +29,20 @@ class VariationalEM:
         self.phi_to = np.ones([num_people, num_people, num_groups])
         self.phi_from = np.ones([num_people, num_people, num_groups])
 
-        self.alpha = np.ones([num_people, num_groups])
+        self.alpha = np.ones([num_groups])
         self.b = np.ones([num_groups, num_groups])
 
     def estimate(self, y):
         """Parameter estimation method; y is the n x n evidence matrix."""
-        for _ in range(self.num_iterations):
+        for iteration in range(self.num_iterations):
+            print("Iteration {}".format(iteration))
             self.e_step(y)
             self.m_step(y)
 
     def e_step(self, y):
         """Expectation step of EM algorithm."""
         # Coordinate ascent to solve for phi_to, phi_from & gamma
-        for _ in range(10):
+        for iteration in range(10):
             self.vi_phi_to(y)
             self.vi_phi_from(y)
             self.vi_gamma(y)
@@ -87,10 +89,10 @@ class VariationalEM:
     def max_alpha(self, y):
         from numpy.linalg import norm
         new_alpha = self.alpha
-        n = num_people
+        n = self.num_people
         # Second part of gradient, keep this out of alpha_step() because
         # it does not change
-        g2 = sum([digamma(gamma_pk[p, :]) - digamma(sum(gamma_pk[p, :])) for p in range(num_people)])
+        g2 = sum([digamma(self.gamma[p, :]) - digamma(sum(self.gamma[p, :])) for p in range(self.num_people)])
         def alpha_step(alpha): ## Single step of Newton-Rhapson algorithm
             ## From Appendix A.2 of http://www.cs.columbia.edu/~blei/papers/BleiNgJordan2003.pdf
             old_alpha = alpha
@@ -117,14 +119,17 @@ class VariationalEM:
         self.alpha = new_alpha
 
     def max_b(self, y):
-        r1 = np.zeros([num_people, num_people])
-        inv_obs_graph = 1 - obs_graph
-        for p, q in itertools.product(range(num_people), range(num_people)):
-            r1[p, q] = sum(phi_pqg[p, :] * phi_qph[q, :])
-        r2 = inv_obs_graph * r1
-        rho_hat = np.sum(r2)/np.sum(r1)
+        # r1 = np.zeros([self.num_people, self.num_people])
+        # inv_y = 1 - y
+        # r2 = inv_y * r1
+        # rho_hat = np.sum(r2)/np.sum(r1)
+        groups_pr = itertools.product(range(self.num_groups), range(self.num_groups))
+        rho_num = np.sum((1 - y) * sum([self.phi_from[:, :, g] * self.phi_to[:, :, h] for g, h in groups_pr]))
+        rho_denom = pow(self.num_people, 2)
+        rho = rho_num / rho_denom
 
-        for g, h in itertools.product(range(num_groups), range(num_groups)):
-            b1 = sum(obs_graph * (phi_pqg[:, g] * phi_qph[:, h]))
-            b2 = (1 - rho_hat) * sum(phi_pqg[:, g] * phi_qph[:, h])
-            self.beta[g, h] = sum(b1)/b2
+        for g, h in itertools.product(range(self.num_groups), range(self.num_groups)):
+            mat = self.phi_from[:, :, g] * self.phi_to[:, :, h]
+            b1 = np.sum(y * mat)
+            b2 = (1 - rho) * np.sum(mat)
+            self.b[g, h] = b1 / b2
