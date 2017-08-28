@@ -34,8 +34,8 @@ class VariationalEM:
     def estimate(self, y):
         """Parameter estimation method; y is the n x n evidence matrix."""
         for _ in range(self.num_iterations):
-            self.e_step(data)
-            self.m_step(data)
+            self.e_step(y)
+            self.m_step(y)
 
     def e_step(self, y):
         """Expectation step of EM algorithm."""
