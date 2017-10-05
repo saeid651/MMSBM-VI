@@ -37,14 +37,15 @@ class VariationalEM:
         self.phi_from = np.ones([num_people, num_people, num_groups]) / num_groups
 
         self.learn_sparsity = learn_sparsity
+        self.alpha = np.ones([num_groups])
+        self.b = np.ones([num_groups, num_groups])
 
     def train(self, y):
         """Parameter estimation method; y is the n x n evidence matrix."""
         if not self.learn_sparsity:
             self.rho = 1 - (np.sum(y) / pow(self.num_people, 2))
-        for _ in range(self.num_iterations):
-            print "b =", self.b
-            print "alpha =", self.alpha
+        for iteration in range(self.num_iterations):
+            print("Iteration {}".format(iteration))
             self.e_step(y)
             self.m_step(y)
 
